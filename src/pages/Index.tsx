@@ -4,535 +4,923 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import Icon from '@/components/ui/icon';
 import { useToast } from '@/hooks/use-toast';
+import { Separator } from '@/components/ui/separator';
 
-interface Achievement {
-  id: string;
+interface Module {
+  id: number;
   title: string;
   icon: string;
-  unlocked: boolean;
+  description: string;
+  completed: boolean;
+  locked: boolean;
+  topics: string[];
 }
 
-interface RiskScenario {
+interface Scenario {
   id: number;
   title: string;
   description: string;
+  situation: string;
+  danger: 'critical' | 'high' | 'medium' | 'low';
   options: {
     text: string;
     correct: boolean;
-    explanation: string;
-    riskLevel: 'low' | 'medium' | 'high';
+    feedback: string;
   }[];
 }
 
 const Index = () => {
   const { toast } = useToast();
-  const [level, setLevel] = useState(1);
-  const [xp, setXp] = useState(0);
-  const [totalScore, setTotalScore] = useState(0);
-  const [currentScenario, setCurrentScenario] = useState(0);
-  const [showResult, setShowResult] = useState(false);
+  const [currentModule, setCurrentModule] = useState(1);
+  const [overallProgress, setOverallProgress] = useState(20);
+  const [selectedScenario, setSelectedScenario] = useState<number | null>(null);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
-  
-  const [achievements, setAchievements] = useState<Achievement[]>([
-    { id: '1', title: 'Первые шаги', icon: 'Footprints', unlocked: true },
-    { id: '2', title: 'Теоретик', icon: 'BookOpen', unlocked: false },
-    { id: '3', title: 'Практик', icon: 'Target', unlocked: false },
-    { id: '4', title: 'Эксперт', icon: 'Award', unlocked: false },
-  ]);
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [quizScore, setQuizScore] = useState(0);
+  const [certificateEarned, setCertificateEarned] = useState(false);
 
-  const theoryCards = [
-    {
-      title: 'Типы рисков',
-      icon: 'AlertTriangle',
-      description: 'Технические, организационные и человеческие факторы риска при работе с установками.',
-      color: 'bg-red-50 border-red-200',
-    },
-    {
-      title: 'Оценка рисков',
-      icon: 'BarChart3',
-      description: 'Методы анализа и оценки уровня опасности: низкий, средний, высокий, критический.',
-      color: 'bg-orange-50 border-orange-200',
-    },
-    {
-      title: 'Меры безопасности',
-      icon: 'Shield',
-      description: 'СИЗ, процедуры, протоколы и правила работы для минимизации рисков.',
-      color: 'bg-green-50 border-green-200',
-    },
-    {
-      title: 'Реагирование',
-      icon: 'AlertCircle',
-      description: 'Действия в аварийных ситуациях, эвакуация и оказание первой помощи.',
-      color: 'bg-blue-50 border-blue-200',
-    },
-  ];
-
-  const scenarios: RiskScenario[] = [
+  const [modules, setModules] = useState<Module[]>([
     {
       id: 1,
-      title: 'Запуск оборудования',
-      description: 'Вы собираетесь запустить установку. Какое действие необходимо выполнить в первую очередь?',
+      title: 'Знакомство с установкой',
+      icon: 'Factory',
+      description: 'Описание процесса каталитического риформинга, блок-схема, технологические единицы',
+      completed: false,
+      locked: false,
+      topics: [
+        'Принципы каталитического риформинга',
+        'Технологическая схема установки',
+        'Основные аппараты и оборудование',
+        'Режимные параметры процесса',
+      ],
+    },
+    {
+      id: 2,
+      title: 'Основные риски и опасности',
+      icon: 'AlertTriangle',
+      description: 'Классификация опасностей: взрыв, пожар, токсичность, статическое электричество',
+      completed: false,
+      locked: true,
+      topics: [
+        'Пожаровзрывоопасность',
+        'Токсичные вещества',
+        'Высокое давление и температура',
+        'Статическое электричество',
+      ],
+    },
+    {
+      id: 3,
+      title: 'Аварийные сценарии',
+      icon: 'Flame',
+      description: 'Типичные ЧП: утечка водорода, пожары, разгерметизация и алгоритмы действий',
+      completed: false,
+      locked: true,
+      topics: [
+        'Утечка водорода',
+        'Пожары на установке',
+        'Разгерметизация оборудования',
+        'Действия персонала при ЧП',
+      ],
+    },
+    {
+      id: 4,
+      title: 'Практические тренинги',
+      icon: 'Gamepad2',
+      description: 'Интерактивные симуляции, фото-кейсы, викторины по безопасности',
+      completed: false,
+      locked: true,
+      topics: [
+        'Симулятор аварийных ситуаций',
+        'Разбор реальных случаев',
+        'Практические упражнения',
+        'Проверка навыков',
+      ],
+    },
+    {
+      id: 5,
+      title: 'Тестирование и сертификация',
+      icon: 'Award',
+      description: 'Закрепление знаний, финальный тест, получение сертификата',
+      completed: false,
+      locked: true,
+      topics: [
+        'Итоговое тестирование',
+        'Проверка усвоения материала',
+        'Выдача сертификата',
+        'Рекомендации по дальнейшему обучению',
+      ],
+    },
+  ]);
+
+  const scenarios: Scenario[] = [
+    {
+      id: 1,
+      title: 'Утечка водорода',
+      description: 'Обнаружена утечка водорода в зоне компрессоров',
+      situation:
+        'Во время обхода установки вы почувствовали характерный запах и услышали шипение в районе водородного компрессора. Переносной газоанализатор показывает концентрацию водорода 2% об.',
+      danger: 'critical',
       options: [
         {
-          text: 'Нажать кнопку старта',
+          text: 'Попытаться самостоятельно перекрыть задвижку',
           correct: false,
-          explanation: 'Запуск без проверки может привести к аварии!',
-          riskLevel: 'high',
+          feedback:
+            'ОПАСНО! При концентрации >2% водород взрывоопасен. Любая искра может привести к взрыву.',
         },
         {
-          text: 'Провести визуальный осмотр и проверку всех систем',
+          text: 'Активировать аварийную сигнализацию, эвакуировать персонал, вызвать аварийную службу',
           correct: true,
-          explanation: 'Правильно! Предварительная проверка — основа безопасности.',
-          riskLevel: 'low',
+          feedback:
+            'ПРАВИЛЬНО! Это критическая ситуация. Необходима немедленная эвакуация и вызов профессионалов.',
         },
         {
-          text: 'Позвать коллегу',
+          text: 'Включить вентиляцию и продолжить наблюдение',
           correct: false,
-          explanation: 'Хорошая идея, но сначала нужна проверка оборудования.',
-          riskLevel: 'medium',
+          feedback: 'НЕВЕРНО! Включение электрооборудования может вызвать искру и взрыв.',
         },
       ],
     },
     {
       id: 2,
-      title: 'Обнаружение утечки',
-      description: 'Вы заметили небольшую утечку жидкости под установкой. Ваши действия?',
+      title: 'Пожар на насосной',
+      description: 'Возгорание в районе насосов подачи сырья',
+      situation:
+        'Вы обнаружили возгорание в районе центробежного насоса. Пламя высотой около 1 метра, очаг локализован. Рядом находятся другие работники.',
+      danger: 'high',
       options: [
         {
-          text: 'Продолжить работу, это незначительно',
+          text: 'Использовать огнетушитель для тушения очага',
           correct: false,
-          explanation: 'Даже небольшая утечка может стать серьезной проблемой!',
-          riskLevel: 'high',
+          feedback:
+            'ЧАСТИЧНО ВЕРНО, но сначала нужно отключить насос и активировать сигнализацию. При пожаре на нефтеустановке первично — остановка оборудования.',
         },
         {
-          text: 'Остановить установку и сообщить руководству',
+          text: 'Активировать пожарную сигнализацию, остановить насос с безопасного расстояния, использовать огнетушитель',
           correct: true,
-          explanation: 'Верно! Безопасность важнее производственных задач.',
-          riskLevel: 'low',
+          feedback:
+            'ПРАВИЛЬНО! Последовательность действий верная: сигнал → остановка оборудования → тушение.',
         },
         {
-          text: 'Подложить тряпку и продолжить',
+          text: 'Покинуть зону и ждать пожарных',
           correct: false,
-          explanation: 'Это не решение проблемы, а её маскировка!',
-          riskLevel: 'high',
+          feedback:
+            'НЕПОЛНОЕ РЕШЕНИЕ. Малый очаг можно потушить, но нужно сначала подать сигнал и остановить оборудование.',
         },
       ],
     },
     {
       id: 3,
-      title: 'Использование СИЗ',
-      description: 'Перед началом работы вы обнаружили, что защитные очки повреждены. Что делать?',
+      title: 'Разгерметизация реактора',
+      description: 'Обнаружена течь фланцевого соединения реактора',
+      situation:
+        'При осмотре реактора риформинга вы заметили течь через фланцевое соединение. Давление в реакторе 25 атм, температура 480°C. Течь небольшая, но стабильная.',
+      danger: 'high',
       options: [
         {
-          text: 'Работать без очков, быть осторожным',
+          text: 'Попытаться подтянуть болты фланца',
           correct: false,
-          explanation: 'СИЗ обязательны! Осторожность не заменит защиту.',
-          riskLevel: 'high',
+          feedback:
+            'КРАЙНЕ ОПАСНО! При высокой температуре и давлении это может привести к резкой разгерметизации и травмам.',
         },
         {
-          text: 'Использовать обычные очки',
-          correct: false,
-          explanation: 'Обычные очки не обеспечивают необходимую защиту.',
-          riskLevel: 'high',
-        },
-        {
-          text: 'Получить новые защитные очки перед началом работы',
+          text: 'Инициировать аварийную остановку реактора, сообщить диспетчеру, эвакуировать зону',
           correct: true,
-          explanation: 'Правильно! Никогда не работайте с неисправными СИЗ.',
-          riskLevel: 'low',
+          feedback:
+            'ПРАВИЛЬНО! Единственно верное решение — остановка и охлаждение реактора перед любыми работами.',
+        },
+        {
+          text: 'Продолжить эксплуатацию и усилить контроль',
+          correct: false,
+          feedback: 'ОПАСНО! Течь может усилиться, что приведет к крупной аварии.',
         },
       ],
     },
   ];
 
-  const quizQuestions = [
-    {
-      question: 'Какой уровень риска требует немедленной остановки работ?',
-      answers: ['Низкий', 'Средний', 'Высокий', 'Критический'],
-      correct: 3,
-    },
-    {
-      question: 'Как часто необходимо проводить инструктаж по технике безопасности?',
-      answers: ['Раз в год', 'Раз в квартал', 'Перед каждой сменой', 'По необходимости'],
-      correct: 1,
-    },
-    {
-      question: 'Что является первым шагом в оценке рисков?',
-      answers: [
-        'Составление отчета',
-        'Идентификация опасностей',
-        'Разработка мер защиты',
-        'Обучение персонала',
-      ],
-      correct: 1,
-    },
-  ];
+  const getDangerColor = (level: string) => {
+    switch (level) {
+      case 'critical':
+        return 'bg-red-100 border-red-400 text-red-900';
+      case 'high':
+        return 'bg-orange-100 border-orange-400 text-orange-900';
+      case 'medium':
+        return 'bg-yellow-100 border-yellow-400 text-yellow-900';
+      case 'low':
+        return 'bg-green-100 border-green-400 text-green-900';
+      default:
+        return 'bg-gray-100 border-gray-400 text-gray-900';
+    }
+  };
 
-  const [currentQuiz, setCurrentQuiz] = useState(0);
-  const [quizScore, setQuizScore] = useState(0);
-  const [quizComplete, setQuizComplete] = useState(false);
+  const getDangerLabel = (level: string) => {
+    switch (level) {
+      case 'critical':
+        return 'КРИТИЧЕСКИЙ';
+      case 'high':
+        return 'ВЫСОКИЙ';
+      case 'medium':
+        return 'СРЕДНИЙ';
+      case 'low':
+        return 'НИЗКИЙ';
+      default:
+        return 'НЕИЗВЕСТНЫЙ';
+    }
+  };
 
-  const handleScenarioChoice = (optionIndex: number) => {
+  const handleModuleComplete = (moduleId: number) => {
+    const updatedModules = modules.map((mod) => {
+      if (mod.id === moduleId) {
+        return { ...mod, completed: true };
+      }
+      if (mod.id === moduleId + 1) {
+        return { ...mod, locked: false };
+      }
+      return mod;
+    });
+    setModules(updatedModules);
+    setOverallProgress(prev => Math.min(prev + 20, 100));
+    
+    toast({
+      title: '✅ Модуль завершён!',
+      description: `Вы успешно прошли модуль "${modules[moduleId - 1].title}"`,
+    });
+
+    if (moduleId < 5) {
+      setCurrentModule(moduleId + 1);
+    }
+  };
+
+  const handleScenarioAnswer = (scenarioId: number, optionIndex: number) => {
     setSelectedOption(optionIndex);
-    setShowResult(true);
-    
-    const option = scenarios[currentScenario].options[optionIndex];
-    
+    setShowFeedback(true);
+
+    const scenario = scenarios[scenarioId - 1];
+    const option = scenario.options[optionIndex];
+
     if (option.correct) {
-      const earnedXP = 50;
-      const earnedScore = 100;
-      setXp(prev => {
-        const newXp = prev + earnedXP;
-        if (newXp >= 100) {
-          setLevel(l => l + 1);
-          toast({
-            title: '🎉 Новый уровень!',
-            description: `Поздравляем! Вы достигли ${level + 1} уровня!`,
-          });
-          return newXp - 100;
-        }
-        return newXp;
-      });
-      setTotalScore(prev => prev + earnedScore);
-      
-      toast({
-        title: '✅ Правильно!',
-        description: option.explanation,
-      });
-    } else {
-      toast({
-        title: '❌ Неверно',
-        description: option.explanation,
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const nextScenario = () => {
-    if (currentScenario < scenarios.length - 1) {
-      setCurrentScenario(prev => prev + 1);
-      setShowResult(false);
-      setSelectedOption(null);
-    } else {
-      toast({
-        title: '🏆 Симуляция завершена!',
-        description: 'Вы прошли все сценарии. Отличная работа!',
-      });
-      
-      const newAchievements = [...achievements];
-      newAchievements[2].unlocked = true;
-      setAchievements(newAchievements);
-    }
-  };
-
-  const handleQuizAnswer = (answerIndex: number) => {
-    if (quizQuestions[currentQuiz].correct === answerIndex) {
       setQuizScore(prev => prev + 1);
       toast({
-        title: '✅ Верно!',
-        description: 'Отличное знание теории!',
+        title: '✅ Правильно!',
+        description: 'Вы действовали согласно протоколам безопасности',
       });
     } else {
       toast({
-        title: '❌ Неправильно',
-        description: 'Повторите теоретический материал.',
+        title: '❌ Ошибка',
+        description: 'Изучите правильный алгоритм действий',
         variant: 'destructive',
       });
     }
-
-    if (currentQuiz < quizQuestions.length - 1) {
-      setCurrentQuiz(prev => prev + 1);
-    } else {
-      setQuizComplete(true);
-      const newAchievements = [...achievements];
-      newAchievements[1].unlocked = true;
-      setAchievements(newAchievements);
-      
-      toast({
-        title: '🎓 Тест завершён!',
-        description: `Ваш результат: ${quizScore + (quizQuestions[currentQuiz].correct === answerIndex ? 1 : 0)} из ${quizQuestions.length}`,
-      });
-    }
   };
 
-  const resetQuiz = () => {
-    setCurrentQuiz(0);
-    setQuizScore(0);
-    setQuizComplete(false);
+  const resetScenario = () => {
+    setSelectedOption(null);
+    setShowFeedback(false);
   };
+
+  const completedModulesCount = modules.filter(m => m.completed).length;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
-      <div className="container mx-auto px-4 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100">
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
         <header className="mb-8">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-6">
             <div>
-              <h1 className="text-4xl font-bold text-gray-900 mb-2">
-                Риски моей установки 🎮
-              </h1>
-              <p className="text-gray-600">
-                Интерактивная программа обучения безопасности
-              </p>
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-3 bg-primary rounded-xl">
+                  <Icon name="GraduationCap" size={32} className="text-white" />
+                </div>
+                <div>
+                  <h1 className="text-4xl font-bold text-gray-900">
+                    Риски моей установки
+                  </h1>
+                  <p className="text-gray-600 text-lg mt-1">
+                    Программа визуального обучения по промышленной безопасности
+                  </p>
+                </div>
+              </div>
             </div>
-            
-            <Card className="w-full md:w-auto border-2 border-primary/20">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-4">
-                  <div className="text-center">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Icon name="Trophy" className="text-yellow-500" size={20} />
-                      <span className="text-2xl font-bold text-primary">{level}</span>
+
+            <Card className="border-2 border-primary/20 w-full lg:w-auto">
+              <CardContent className="p-5">
+                <div className="flex flex-col gap-4">
+                  <div className="flex items-center justify-between gap-8">
+                    <div className="flex items-center gap-3">
+                      <Icon name="BookCheck" className="text-primary" size={24} />
+                      <div>
+                        <p className="text-2xl font-bold text-primary">
+                          {completedModulesCount}/5
+                        </p>
+                        <p className="text-xs text-gray-500">Модулей завершено</p>
+                      </div>
                     </div>
-                    <p className="text-xs text-gray-500">Уровень</p>
+                    
+                    <Separator orientation="vertical" className="h-12" />
+                    
+                    <div className="flex items-center gap-3">
+                      <Icon name="Target" className="text-secondary" size={24} />
+                      <div>
+                        <p className="text-2xl font-bold text-secondary">{quizScore}</p>
+                        <p className="text-xs text-gray-500">Правильных ответов</p>
+                      </div>
+                    </div>
                   </div>
                   
-                  <div className="w-px h-12 bg-gray-200" />
-                  
-                  <div className="text-center">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Icon name="Star" className="text-purple-500" size={20} />
-                      <span className="text-2xl font-bold text-secondary">{totalScore}</span>
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <span className="text-gray-600 font-medium">Общий прогресс</span>
+                      <span className="text-primary font-bold">{overallProgress}%</span>
                     </div>
-                    <p className="text-xs text-gray-500">Очки</p>
-                  </div>
-                  
-                  <div className="w-px h-12 bg-gray-200" />
-                  
-                  <div className="min-w-32">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Icon name="Zap" className="text-yellow-500" size={16} />
-                      <span className="text-sm font-semibold">XP: {xp}/100</span>
-                    </div>
-                    <Progress value={xp} className="h-2" />
+                    <Progress value={overallProgress} className="h-3" />
                   </div>
                 </div>
               </CardContent>
             </Card>
           </div>
-          
-          <div className="mt-6 flex flex-wrap gap-2">
-            {achievements.map((achievement) => (
-              <Badge
-                key={achievement.id}
-                variant={achievement.unlocked ? 'default' : 'outline'}
-                className={`px-3 py-2 ${achievement.unlocked ? 'bg-gradient-to-r from-yellow-400 to-orange-500 text-white' : 'opacity-50'}`}
-              >
-                <Icon name={achievement.icon as any} size={16} className="mr-1" />
-                {achievement.title}
-              </Badge>
-            ))}
-          </div>
+
+          {certificateEarned && (
+            <Card className="border-2 border-accent bg-gradient-to-r from-accent/10 to-green-50">
+              <CardContent className="p-4 flex items-center gap-4">
+                <Icon name="Award" size={40} className="text-accent" />
+                <div className="flex-1">
+                  <h3 className="font-bold text-lg text-gray-900">Сертификат получен!</h3>
+                  <p className="text-gray-600">
+                    Вы успешно завершили программу обучения по промышленной безопасности
+                  </p>
+                </div>
+                <Button className="bg-accent hover:bg-accent/90">
+                  <Icon name="Download" size={18} className="mr-2" />
+                  Скачать
+                </Button>
+              </CardContent>
+            </Card>
+          )}
         </header>
 
-        <Tabs defaultValue="theory" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 lg:w-auto">
-            <TabsTrigger value="theory" className="gap-2">
-              <Icon name="BookOpen" size={18} />
-              Теория
-            </TabsTrigger>
-            <TabsTrigger value="practice" className="gap-2">
-              <Icon name="Gamepad2" size={18} />
-              Практика
-            </TabsTrigger>
-            <TabsTrigger value="test" className="gap-2">
-              <Icon name="ClipboardCheck" size={18} />
-              Тесты
-            </TabsTrigger>
+        <Tabs value={`module-${currentModule}`} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5 gap-2 h-auto bg-transparent p-0">
+            {modules.map((module) => (
+              <TabsTrigger
+                key={module.id}
+                value={`module-${module.id}`}
+                onClick={() => !module.locked && setCurrentModule(module.id)}
+                disabled={module.locked}
+                className="relative flex flex-col items-center gap-2 h-auto py-4 px-3 data-[state=active]:bg-primary data-[state=active]:text-white disabled:opacity-40 border-2 data-[state=active]:border-primary hover:border-primary/50 transition-all"
+              >
+                {module.completed && (
+                  <div className="absolute -top-2 -right-2 bg-accent rounded-full p-1">
+                    <Icon name="Check" size={14} className="text-white" />
+                  </div>
+                )}
+                {module.locked && (
+                  <Icon name="Lock" size={16} className="absolute top-2 right-2 text-gray-400" />
+                )}
+                <Icon name={module.icon as any} size={24} />
+                <span className="text-xs font-semibold text-center leading-tight">
+                  {module.title}
+                </span>
+              </TabsTrigger>
+            ))}
           </TabsList>
 
-          <TabsContent value="theory" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {theoryCards.map((card, index) => (
-                <Card
-                  key={index}
-                  className={`game-card-hover border-2 ${card.color} animate-fade-in`}
-                  style={{ animationDelay: `${index * 0.1}s` }}
-                >
-                  <CardHeader>
-                    <div className="flex items-start gap-4">
-                      <div className="p-3 bg-white rounded-lg shadow-sm">
-                        <Icon name={card.icon as any} size={32} className="text-primary" />
+          {modules.map((module) => (
+            <TabsContent key={module.id} value={`module-${module.id}`} className="space-y-6">
+              <Card className="border-2 border-primary/30">
+                <CardHeader className="bg-gradient-to-r from-primary/5 to-blue-50">
+                  <div className="flex items-start justify-between">
+                    <div className="flex gap-4">
+                      <div className="p-4 bg-white rounded-xl shadow-sm">
+                        <Icon name={module.icon as any} size={40} className="text-primary" />
                       </div>
-                      <div className="flex-1">
-                        <CardTitle className="text-xl mb-2">{card.title}</CardTitle>
-                        <CardDescription className="text-base">
-                          {card.description}
+                      <div>
+                        <CardTitle className="text-3xl mb-2">{module.title}</CardTitle>
+                        <CardDescription className="text-base text-gray-700">
+                          {module.description}
                         </CardDescription>
                       </div>
                     </div>
-                  </CardHeader>
-                  <CardContent>
-                    <Button variant="outline" className="w-full">
-                      <Icon name="ExternalLink" size={16} className="mr-2" />
-                      Изучить подробнее
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="practice" className="space-y-6">
-            <Card className="border-2 border-secondary/20">
-              <CardHeader>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <CardTitle className="text-2xl mb-2">
-                      Сценарий {currentScenario + 1}/{scenarios.length}
-                    </CardTitle>
-                    <CardDescription className="text-base">
-                      {scenarios[currentScenario].title}
-                    </CardDescription>
-                  </div>
-                  <Badge variant="secondary" className="text-lg px-4 py-2">
-                    <Icon name="Target" size={18} className="mr-2" />
-                    Симулятор
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-                  <p className="text-lg text-gray-800 leading-relaxed">
-                    {scenarios[currentScenario].description}
-                  </p>
-                </div>
-
-                <div className="space-y-3">
-                  {scenarios[currentScenario].options.map((option, index) => (
-                    <Button
-                      key={index}
-                      variant={selectedOption === index ? 'default' : 'outline'}
-                      className={`w-full justify-start text-left h-auto py-4 px-6 ${
-                        showResult && selectedOption === index
-                          ? option.correct
-                            ? 'bg-green-500 hover:bg-green-600 text-white border-green-600'
-                            : 'bg-red-500 hover:bg-red-600 text-white border-red-600'
-                          : ''
+                    <Badge
+                      variant={module.completed ? 'default' : 'secondary'}
+                      className={`text-sm px-4 py-2 ${
+                        module.completed ? 'bg-accent' : ''
                       }`}
-                      onClick={() => !showResult && handleScenarioChoice(index)}
-                      disabled={showResult}
                     >
-                      <div className="flex items-start gap-3 w-full">
-                        <span className="font-bold text-lg">{String.fromCharCode(65 + index)}.</span>
-                        <div className="flex-1">
-                          <p className="text-base">{option.text}</p>
-                          {showResult && selectedOption === index && (
-                            <p className="mt-2 text-sm opacity-90">{option.explanation}</p>
-                          )}
-                        </div>
-                        {showResult && selectedOption === index && (
-                          <Icon
-                            name={option.correct ? 'Check' : 'X'}
-                            size={24}
-                            className="flex-shrink-0"
-                          />
-                        )}
-                      </div>
-                    </Button>
-                  ))}
-                </div>
-
-                {showResult && (
-                  <div className="flex justify-end">
-                    <Button onClick={nextScenario} size="lg" className="gap-2">
-                      {currentScenario < scenarios.length - 1 ? (
-                        <>
-                          Следующий сценарий
-                          <Icon name="ArrowRight" size={20} />
-                        </>
+                      {module.completed ? (
+                        <><Icon name="Check" size={16} className="mr-1" /> Завершено</>
                       ) : (
-                        <>
-                          Завершить
-                          <Icon name="Check" size={20} />
-                        </>
+                        <><Icon name="Clock" size={16} className="mr-1" /> В процессе</>
                       )}
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="test" className="space-y-6">
-            {!quizComplete ? (
-              <Card className="border-2 border-accent/20">
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle className="text-2xl mb-2">
-                        Вопрос {currentQuiz + 1}/{quizQuestions.length}
-                      </CardTitle>
-                      <CardDescription className="text-base">
-                        Выберите правильный ответ
-                      </CardDescription>
-                    </div>
-                    <Badge variant="default" className="text-lg px-4 py-2 bg-accent">
-                      <Icon name="Brain" size={18} className="mr-2" />
-                      Счёт: {quizScore}
                     </Badge>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="bg-purple-50 border border-purple-200 rounded-lg p-6">
-                    <p className="text-xl font-semibold text-gray-800">
-                      {quizQuestions[currentQuiz].question}
-                    </p>
-                  </div>
+                <CardContent className="p-6">
+                  {module.id === 1 && (
+                    <div className="space-y-6">
+                      <div className="grid md:grid-cols-2 gap-6">
+                        <Card className="border-primary/20">
+                          <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                              <Icon name="FlaskConical" size={24} className="text-primary" />
+                              Процесс риформинга
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <p className="text-gray-700 leading-relaxed mb-4">
+                              Каталитический риформинг — процесс переработки бензиновых фракций
+                              нефти для повышения октанового числа. Процесс протекает при высоких
+                              температурах (480-520°C) и давлении (15-40 атм) в присутствии
+                              платинового катализатора.
+                            </p>
+                            <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                              <p className="text-sm font-semibold text-blue-900 mb-2">
+                                Ключевые параметры:
+                              </p>
+                              <ul className="text-sm text-blue-800 space-y-1">
+                                <li>• Температура: 480-520°C</li>
+                                <li>• Давление: 15-40 атм</li>
+                                <li>• Катализатор: Pt/Al₂O₃</li>
+                                <li>• Среда: водородсодержащий газ</li>
+                              </ul>
+                            </div>
+                          </CardContent>
+                        </Card>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {quizQuestions[currentQuiz].answers.map((answer, index) => (
-                      <Button
-                        key={index}
-                        variant="outline"
-                        className="h-auto py-6 px-6 text-left justify-start hover:bg-purple-100 hover:border-purple-300"
-                        onClick={() => handleQuizAnswer(index)}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center font-bold text-purple-700">
-                            {String.fromCharCode(65 + index)}
+                        <Card className="border-secondary/20">
+                          <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                              <Icon name="Network" size={24} className="text-secondary" />
+                              Технологическая схема
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="bg-orange-50 rounded-lg p-4 border border-orange-200 mb-4">
+                              <p className="text-sm font-semibold text-orange-900 mb-3">
+                                Основные блоки установки:
+                              </p>
+                              <div className="space-y-3">
+                                {[
+                                  { name: 'Печь', icon: 'Flame' },
+                                  { name: 'Реакторный блок', icon: 'Container' },
+                                  { name: 'Сепарация', icon: 'Split' },
+                                  { name: 'Циркуляция Н₂', icon: 'RefreshCw' },
+                                ].map((block, idx) => (
+                                  <div
+                                    key={idx}
+                                    className="flex items-center gap-3 bg-white rounded p-2"
+                                  >
+                                    <Icon name={block.icon as any} size={20} className="text-secondary" />
+                                    <span className="text-sm font-medium text-gray-700">
+                                      {idx + 1}. {block.name}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </div>
+
+                      <Accordion type="single" collapsible className="space-y-3">
+                        {module.topics.map((topic, idx) => (
+                          <AccordionItem key={idx} value={`item-${idx}`} className="border rounded-lg px-4">
+                            <AccordionTrigger className="text-left font-semibold hover:no-underline">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                  <span className="text-sm font-bold text-primary">{idx + 1}</span>
+                                </div>
+                                {topic}
+                              </div>
+                            </AccordionTrigger>
+                            <AccordionContent className="text-gray-600 pt-2">
+                              Детальная информация по теме "{topic}" включает теоретические основы,
+                              практические примеры и требования безопасности.
+                            </AccordionContent>
+                          </AccordionItem>
+                        ))}
+                      </Accordion>
+
+                      <div className="flex justify-end pt-4">
+                        <Button
+                          size="lg"
+                          onClick={() => handleModuleComplete(module.id)}
+                          disabled={module.completed}
+                          className="gap-2"
+                        >
+                          {module.completed ? (
+                            <>
+                              <Icon name="Check" size={20} />
+                              Модуль завершён
+                            </>
+                          ) : (
+                            <>
+                              Завершить модуль
+                              <Icon name="ArrowRight" size={20} />
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {module.id === 2 && (
+                    <div className="space-y-6">
+                      <div className="grid md:grid-cols-2 gap-4">
+                        {[
+                          {
+                            title: 'Пожаровзрывоопасность',
+                            icon: 'Flame',
+                            color: 'red',
+                            risks: [
+                              'Водород (4-75% об.) - взрывоопасен',
+                              'Углеводороды C₅₊ - горючие',
+                              'Высокая температура процесса',
+                              'Статическое электричество',
+                            ],
+                          },
+                          {
+                            title: 'Токсичность',
+                            icon: 'Skull',
+                            color: 'purple',
+                            risks: [
+                              'Сероводород (H₂S) - ПДК 10 мг/м³',
+                              'Бензол - канцероген 1 класса',
+                              'Угарный газ (CO)',
+                              'Меркаптаны и сульфиды',
+                            ],
+                          },
+                          {
+                            title: 'Высокие параметры',
+                            icon: 'Gauge',
+                            color: 'orange',
+                            risks: [
+                              'Давление до 40 атм',
+                              'Температура до 520°C',
+                              'Риск ожогов паром/нефтью',
+                              'Разрушение оборудования',
+                            ],
+                          },
+                          {
+                            title: 'Электростатика',
+                            icon: 'Zap',
+                            color: 'yellow',
+                            risks: [
+                              'Заряды при движении жидкости',
+                              'Искровые разряды',
+                              'Воспламенение паров',
+                              'Взрыв в замкнутом объеме',
+                            ],
+                          },
+                        ].map((danger, idx) => (
+                          <Card
+                            key={idx}
+                            className={`border-2 border-${danger.color}-300 hover:shadow-lg transition-shadow`}
+                          >
+                            <CardHeader className={`bg-${danger.color}-50`}>
+                              <CardTitle className="flex items-center gap-2 text-lg">
+                                <Icon name={danger.icon as any} size={24} className={`text-${danger.color}-600`} />
+                                {danger.title}
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent className="pt-4">
+                              <ul className="space-y-2">
+                                {danger.risks.map((risk, ridx) => (
+                                  <li key={ridx} className="flex items-start gap-2 text-sm">
+                                    <Icon name="AlertCircle" size={16} className="text-red-500 mt-0.5 flex-shrink-0" />
+                                    <span className="text-gray-700">{risk}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+
+                      <Card className="border-2 border-destructive/30 bg-red-50/50">
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2 text-destructive">
+                            <Icon name="ShieldAlert" size={28} />
+                            Критически важно!
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-gray-800 font-medium leading-relaxed">
+                            Все работы на установке каталитического риформинга относятся к
+                            газоопасным работам 1-й группы и требуют обязательного наряда-допуска,
+                            инструктажа и присутствия газоспасательной службы.
+                          </p>
+                        </CardContent>
+                      </Card>
+
+                      <div className="flex justify-end pt-4">
+                        <Button
+                          size="lg"
+                          onClick={() => handleModuleComplete(module.id)}
+                          disabled={module.completed}
+                          className="gap-2"
+                        >
+                          {module.completed ? (
+                            <>
+                              <Icon name="Check" size={20} />
+                              Модуль завершён
+                            </>
+                          ) : (
+                            <>
+                              Завершить модуль
+                              <Icon name="ArrowRight" size={20} />
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {module.id === 3 && (
+                    <div className="space-y-6">
+                      <div className="grid gap-4">
+                        {scenarios.map((scenario) => (
+                          <Card
+                            key={scenario.id}
+                            className={`border-2 ${
+                              selectedScenario === scenario.id
+                                ? 'border-primary shadow-lg'
+                                : 'border-gray-200'
+                            }`}
+                          >
+                            <CardHeader>
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-3 mb-2">
+                                    <CardTitle className="text-xl">{scenario.title}</CardTitle>
+                                    <Badge className={`${getDangerColor(scenario.danger)} font-bold`}>
+                                      {getDangerLabel(scenario.danger)}
+                                    </Badge>
+                                  </div>
+                                  <CardDescription className="text-base">
+                                    {scenario.description}
+                                  </CardDescription>
+                                </div>
+                                <Button
+                                  variant={selectedScenario === scenario.id ? 'default' : 'outline'}
+                                  onClick={() => {
+                                    setSelectedScenario(scenario.id);
+                                    resetScenario();
+                                  }}
+                                >
+                                  {selectedScenario === scenario.id ? 'Выбрано' : 'Изучить'}
+                                </Button>
+                              </div>
+                            </CardHeader>
+
+                            {selectedScenario === scenario.id && (
+                              <CardContent className="space-y-4">
+                                <div className="bg-gradient-to-r from-red-50 to-orange-50 rounded-lg p-5 border-2 border-red-200">
+                                  <p className="text-sm font-semibold text-red-900 mb-2">
+                                    СИТУАЦИЯ:
+                                  </p>
+                                  <p className="text-gray-800 leading-relaxed">{scenario.situation}</p>
+                                </div>
+
+                                <Separator />
+
+                                <div>
+                                  <p className="font-semibold text-gray-900 mb-3">
+                                    Ваши действия:
+                                  </p>
+                                  <div className="space-y-3">
+                                    {scenario.options.map((option, idx) => (
+                                      <Button
+                                        key={idx}
+                                        variant={
+                                          selectedOption === idx
+                                            ? option.correct
+                                              ? 'default'
+                                              : 'destructive'
+                                            : 'outline'
+                                        }
+                                        className={`w-full h-auto py-4 px-5 text-left justify-start ${
+                                          selectedOption === idx && option.correct
+                                            ? 'bg-accent hover:bg-accent/90 border-accent'
+                                            : ''
+                                        }`}
+                                        onClick={() => handleScenarioAnswer(scenario.id, idx)}
+                                        disabled={showFeedback}
+                                      >
+                                        <div className="flex items-start gap-3 w-full">
+                                          <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center font-bold flex-shrink-0">
+                                            {String.fromCharCode(65 + idx)}
+                                          </div>
+                                          <div className="flex-1">
+                                            <p className="font-medium">{option.text}</p>
+                                            {showFeedback && selectedOption === idx && (
+                                              <div className="mt-3 pt-3 border-t border-white/30">
+                                                <p className="text-sm opacity-95">{option.feedback}</p>
+                                              </div>
+                                            )}
+                                          </div>
+                                          {showFeedback && selectedOption === idx && (
+                                            <Icon
+                                              name={option.correct ? 'CheckCircle' : 'XCircle'}
+                                              size={24}
+                                              className="flex-shrink-0"
+                                            />
+                                          )}
+                                        </div>
+                                      </Button>
+                                    ))}
+                                  </div>
+                                </div>
+
+                                {showFeedback && (
+                                  <div className="flex justify-end">
+                                    <Button variant="outline" onClick={resetScenario}>
+                                      <Icon name="RotateCcw" size={18} className="mr-2" />
+                                      Попробовать снова
+                                    </Button>
+                                  </div>
+                                )}
+                              </CardContent>
+                            )}
+                          </Card>
+                        ))}
+                      </div>
+
+                      <div className="flex justify-end pt-4">
+                        <Button
+                          size="lg"
+                          onClick={() => handleModuleComplete(module.id)}
+                          disabled={module.completed}
+                          className="gap-2"
+                        >
+                          {module.completed ? (
+                            <>
+                              <Icon name="Check" size={20} />
+                              Модуль завершён
+                            </>
+                          ) : (
+                            <>
+                              Завершить модуль
+                              <Icon name="ArrowRight" size={20} />
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {module.id === 4 && (
+                    <div className="space-y-6">
+                      <Card className="border-2 border-primary/30">
+                        <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50">
+                          <CardTitle className="flex items-center gap-2">
+                            <Icon name="Gamepad2" size={28} className="text-primary" />
+                            Интерактивный симулятор
+                          </CardTitle>
+                          <CardDescription>
+                            Практические упражнения для отработки навыков
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="p-6">
+                          <div className="grid md:grid-cols-3 gap-4">
+                            {[
+                              {
+                                title: 'VR-симуляция',
+                                icon: 'Glasses',
+                                description: 'Виртуальная реальность для отработки действий на установке',
+                              },
+                              {
+                                title: 'Фото-кейсы',
+                                icon: 'Camera',
+                                description: 'Анализ реальных ситуаций по фотографиям',
+                              },
+                              {
+                                title: 'Видео-разборы',
+                                icon: 'Video',
+                                description: 'Разбор аварийных случаев на видео',
+                              },
+                            ].map((item, idx) => (
+                              <Card key={idx} className="hover:shadow-md transition-shadow">
+                                <CardHeader>
+                                  <Icon name={item.icon as any} size={40} className="text-primary mb-2" />
+                                  <CardTitle className="text-lg">{item.title}</CardTitle>
+                                  <CardDescription>{item.description}</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                  <Button variant="outline" className="w-full">
+                                    Начать
+                                  </Button>
+                                </CardContent>
+                              </Card>
+                            ))}
                           </div>
-                          <span className="text-base">{answer}</span>
-                        </div>
-                      </Button>
-                    ))}
-                  </div>
+                        </CardContent>
+                      </Card>
 
-                  <Progress
-                    value={((currentQuiz + 1) / quizQuestions.length) * 100}
-                    className="h-2"
-                  />
+                      <div className="flex justify-end pt-4">
+                        <Button
+                          size="lg"
+                          onClick={() => handleModuleComplete(module.id)}
+                          disabled={module.completed}
+                          className="gap-2"
+                        >
+                          {module.completed ? (
+                            <>
+                              <Icon name="Check" size={20} />
+                              Модуль завершён
+                            </>
+                          ) : (
+                            <>
+                              Завершить модуль
+                              <Icon name="ArrowRight" size={20} />
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {module.id === 5 && (
+                    <div className="space-y-6">
+                      <Card className="border-2 border-accent/30 bg-gradient-to-br from-green-50 to-blue-50">
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2 text-2xl">
+                            <Icon name="Award" size={32} className="text-accent" />
+                            Финальное тестирование
+                          </CardTitle>
+                          <CardDescription className="text-base">
+                            Проверка усвоения материала всех модулей
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <div className="grid md:grid-cols-2 gap-4">
+                            <div className="bg-white rounded-lg p-5 border">
+                              <h4 className="font-semibold text-gray-900 mb-3">Требования:</h4>
+                              <ul className="space-y-2 text-sm text-gray-700">
+                                <li className="flex items-center gap-2">
+                                  <Icon name="Check" size={16} className="text-accent" />
+                                  Завершить все 4 модуля
+                                </li>
+                                <li className="flex items-center gap-2">
+                                  <Icon name="Check" size={16} className="text-accent" />
+                                  Набрать минимум 80% правильных ответов
+                                </li>
+                                <li className="flex items-center gap-2">
+                                  <Icon name="Check" size={16} className="text-accent" />
+                                  Время на тест: 60 минут
+                                </li>
+                              </ul>
+                            </div>
+
+                            <div className="bg-white rounded-lg p-5 border">
+                              <h4 className="font-semibold text-gray-900 mb-3">Результат:</h4>
+                              <ul className="space-y-2 text-sm text-gray-700">
+                                <li className="flex items-center gap-2">
+                                  <Icon name="Award" size={16} className="text-accent" />
+                                  Сертификат о прохождении обучения
+                                </li>
+                                <li className="flex items-center gap-2">
+                                  <Icon name="FileCheck" size={16} className="text-accent" />
+                                  Запись в личном деле
+                                </li>
+                                <li className="flex items-center gap-2">
+                                  <Icon name="TrendingUp" size={16} className="text-accent" />
+                                  Допуск к работе на установке
+                                </li>
+                              </ul>
+                            </div>
+                          </div>
+
+                          <Separator />
+
+                          <div className="text-center py-6">
+                            <Button
+                              size="lg"
+                              className="bg-accent hover:bg-accent/90 gap-3 px-8"
+                              onClick={() => {
+                                setCertificateEarned(true);
+                                handleModuleComplete(module.id);
+                                toast({
+                                  title: '🎉 Поздравляем!',
+                                  description: 'Вы успешно завершили программу обучения!',
+                                });
+                              }}
+                              disabled={completedModulesCount < 4}
+                            >
+                              <Icon name="PlayCircle" size={24} />
+                              {completedModulesCount < 4
+                                ? `Завершите ${4 - completedModulesCount} модуля для доступа`
+                                : 'Начать финальный тест'}
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
-            ) : (
-              <Card className="border-2 border-green-200 bg-green-50">
-                <CardHeader>
-                  <CardTitle className="text-3xl text-center">
-                    🎉 Тест завершён!
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="text-center space-y-6">
-                  <div className="bg-white rounded-lg p-8 inline-block">
-                    <p className="text-6xl font-bold text-primary mb-2">
-                      {quizScore}/{quizQuestions.length}
-                    </p>
-                    <p className="text-xl text-gray-600">
-                      {quizScore === quizQuestions.length
-                        ? 'Превосходно!'
-                        : quizScore >= quizQuestions.length / 2
-                        ? 'Хороший результат!'
-                        : 'Нужно повторить теорию'}
-                    </p>
-                  </div>
-                  <Button onClick={resetQuiz} size="lg" className="gap-2">
-                    <Icon name="RotateCcw" size={20} />
-                    Пройти заново
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
+            </TabsContent>
+          ))}
         </Tabs>
       </div>
     </div>

@@ -16,13 +16,13 @@
     --primary: 199 89% 48%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 262 83% 58%;
+    --secondary: 24 95% 53%;
     --secondary-foreground: 0 0% 100%;
 
     --muted: 220 20% 93%;
     --muted-foreground: 220 10% 45%;
 
-    --accent: 142 76% 36%;
+    --accent: 142 70% 45%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
@@ -134,5 +134,29 @@
 
   .game-card-hover {
     @apply transition-all duration-300 hover:scale-105 hover:shadow-2xl;
+  }
+
+  .module-card-hover {
+    @apply transition-all duration-300 hover:scale-102 hover:shadow-lg;
+  }
+
+  @keyframes progress-shine {
+    0% {
+      background-position: -200% center;
+    }
+    100% {
+      background-position: 200% center;
+    }
+  }
+
+  .progress-shine {
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.3),
+      transparent
+    );
+    background-size: 200% 100%;
+    animation: progress-shine 2s infinite;
   }
 }
